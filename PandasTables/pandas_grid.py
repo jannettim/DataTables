@@ -16,7 +16,7 @@ class PandasTable(QtGui.QMainWindow):
 
         self.next_action = QtGui.QAction(QtGui.QIcon(""), 'Next', self)
         self.quit_action = QtGui.QAction(QtGui.QIcon(""), "Quit", self)
-        self.filter_action = QtGui.QAction(QtGui.QIcon(""), "Re-Filter", self)
+        self.filter_action = QtGui.QAction(QtGui.QIcon(""), "Live Filtering", self)
         self.revert_action = QtGui.QAction(QtGui.QIcon(""), "Revert", self)
         self.head_action = QtGui.QAction(QtGui.QIcon(""), "Head", self)
         self.tail_action = QtGui.QAction(QtGui.QIcon(""), "Tail", self)
@@ -267,7 +267,7 @@ class FilterDialog(QtGui.QDialog):
 
         self.setLayout(self.grid)
 
-        self.setWindowTitle("Re-Filter")
+        self.setWindowTitle("Live Filtering")
 
         self.add_labels()
 
@@ -322,7 +322,7 @@ class FilterDialog(QtGui.QDialog):
 
                             continue
 
-                for  p in parens:
+                for p in parens:
 
                     if len(p) != 2:
 
@@ -606,16 +606,14 @@ class FilterDialog(QtGui.QDialog):
         for x in self.df.columns.values.tolist():
             columns_df.append(pp.Word(x, exact=len(x)))
 
-        # try:
-        parse_eval = df_str + ".loc[" + pp.OneOrMore(pp.ZeroOrMore("(") + pp.Optional("~") + "self.df" + pp.Or([".", "[\"", "['"]) + pp.Or(columns_df) + pp.Optional(pp.Or(["\"]", "']"])) + \
+        parse_eval = loc_match + pp.OneOrMore(pp.ZeroOrMore("(") + pp.Optional("~") + "self.df" + pp.Or([".", "[\"", "['"]) + pp.Or(columns_df) + pp.Optional(pp.Or(["\"]", "']"])) + \
                      pp.Or([gte, lte, equal_cond, nequal_cond, pp.Word(".isin([", exact=7), pp.Word(".isnull(", exact=8)]) + pp.Optional(pp.Or(["\"", "'"])) + pp.Or(python_str_floats) + pp.Optional(pp.Or("\"]", "']")) + pp.ZeroOrMore(")") + pp.Optional(pp.Or(["|", "&"]))) + "]"
 
         parse_eval.parseString(self.advanced_filter.text())
-        exec("print(" + self.advanced_filter.text() + ")")
+        exec("self.df = " + "self.df." + self.advanced_filter.text())
 
-        # except pp.ParseException:
-        #
-        #     print("error")
+        self.parent.update_data(self.df)
+        self.exit_action()
 
     def isnull_chosen(self):
 
@@ -884,8 +882,6 @@ class InputDialog(QtGui.QDialog):
 
             elif text1 and not text2:
 
-                print(self.df[[int(text1)]])
-
                 new_df = self.df.iloc[[int(text1)]]
                 vd = TableWidget(new_df)
                 self.grid.addWidget(vd, 0, 0)
@@ -895,8 +891,6 @@ class InputDialog(QtGui.QDialog):
                 new_df = self.df[:int(text2)]
                 vd = TableWidget(new_df)
                 self.grid.addWidget(vd, 0, 0)
-
-
 
 
 class ErrorDialog(QtGui.QDialog):
