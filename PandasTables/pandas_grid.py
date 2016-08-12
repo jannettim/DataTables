@@ -1,7 +1,7 @@
 from PyQt4 import QtCore
 from PyQt4 import QtGui
 import warnings
-import pyparsing
+import pyparsing as pp
 import sys
 
 
@@ -584,6 +584,39 @@ class FilterDialog(QtGui.QDialog):
         self.parent.update_data(df)
         self.exit_action()
 
+    def eval_advaced(self):
+
+        pp.ParserElement.enablePackrat()
+
+        print_func = pp.Word("print(", exact=6)
+        df_str = pp.Word("self.df", exact=7)
+        period_match = pp.Word(".")
+        loc_match = pp.Word(".loc[", exact=4)
+        left_bracket = pp.Word("[")
+        right_bracket = pp.Word("]")
+        right_paren = pp.Word(")")
+        gte = pp.Word(">=", exact=2)  # <===!=", exact=2)
+        lte = pp.Word("<=", exact=2)
+        quote = pp.Word("\"", exact=1)
+        equal_cond = pp.Word("==", exact=2)
+        nequal_cond = pp.Word("!=", exact=2)
+        python_str_floats = pp.OneOrMore(pp.Word(pp.alphanums + "." + "," + ")"))
+        columns_df = []
+
+        for x in self.df.columns.values.tolist():
+            columns_df.append(pp.Word(x, exact=len(x)))
+
+        # try:
+        parse_eval = df_str + ".loc[" + pp.OneOrMore(pp.ZeroOrMore("(") + pp.Optional("~") + "self.df" + pp.Or([".", "[\"", "['"]) + pp.Or(columns_df) + pp.Optional(pp.Or(["\"]", "']"])) + \
+                     pp.Or([gte, lte, equal_cond, nequal_cond, pp.Word(".isin([", exact=7), pp.Word(".isnull(", exact=8)]) + pp.Optional(pp.Or(["\"", "'"])) + pp.Or(python_str_floats) + pp.Optional(pp.Or("\"]", "']")) + pp.ZeroOrMore(")") + pp.Optional(pp.Or(["|", "&"]))) + "]"
+
+        parse_eval.parseString(self.advanced_filter.text())
+        exec("print(" + self.advanced_filter.text() + ")")
+
+        # except pp.ParseException:
+        #
+        #     print("error")
+
     def isnull_chosen(self):
 
         sender = self.sender()
@@ -669,6 +702,7 @@ class FilterDialog(QtGui.QDialog):
         self.refresh_data.clicked.connect(self.eval_filter)
         self.advanced_button.clicked.connect(self.advanced_layout)
         self.basic_button.clicked.connect(self.revert_to_basic)
+        self.refresh_data_adv.clicked.connect(self.eval_advaced)
 
     def add_labels(self):
         self.grid.addWidget(self.open_label, 0, 0)
