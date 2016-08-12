@@ -1,6 +1,7 @@
 from PyQt4 import QtCore
 from PyQt4 import QtGui
 import warnings
+import pyparsing
 import sys
 
 
@@ -241,14 +242,20 @@ class FilterDialog(QtGui.QDialog):
         self.conditionals = QtGui.QComboBox()
         self.or_button = QtGui.QPushButton("or")
         self.and_button = QtGui.QPushButton("and")
+        self.advanced_filter = QtGui.QLineEdit()
 
         self.lit_labels = QtGui.QLabel("Literals")
         self.col_label = QtGui.QLabel("Columns")
         self.con_label = QtGui.QLabel("Conditionals")
         self.open_label = QtGui.QLabel("Open Parentheses")
         self.close_label = QtGui.QLabel("Close Parentheses")
+        self.text_label = QtGui.QLabel("Pandas Code")
+        self.code_prompt = QtGui.QLabel("self.df.")
 
         self.refresh_data = QtGui.QPushButton("Refresh Data")
+        self.advanced_button = QtGui.QPushButton("Advanced Filter")
+        self.basic_button = QtGui.QPushButton("Basic Filter")
+        self.refresh_data_adv = QtGui.QPushButton("Refresh Data")
 
         self.cur_row = 0
 
@@ -593,11 +600,75 @@ class FilterDialog(QtGui.QDialog):
 
             self.widgets_dict[button_row]["Literals"].setEnabled(True)
 
+    def revert_to_basic(self):
+
+        self.text_label.hide()
+        self.code_prompt.hide()
+        self.advanced_filter.hide()
+        self.refresh_data_adv.hide()
+        self.basic_button.hide()
+
+        self.code_prompt.setEnabled(False)
+
+        self.and_button.show()
+        self.or_button.show()
+
+        for k, v in self.widgets_dict.items():
+
+            for k2 in v.keys():
+                self.widgets_dict[k][k2].show()
+                self.lit_labels.show()
+                self.col_label.show()
+                self.con_label.show()
+                self.open_label.show()
+                self.close_label.show()
+
+                self.advanced_button.show()
+                self.and_button.show()
+                self.or_button.show()
+                self.refresh_data.show()
+
+    def advanced_layout(self):
+
+        self.refresh_data.hide()
+
+        for k, v in self.widgets_dict.items():
+
+            for k2 in v.keys():
+                self.widgets_dict[k][k2].hide()
+                self.lit_labels.hide()
+                self.col_label.hide()
+                self.con_label.hide()
+                self.open_label.hide()
+                self.close_label.hide()
+
+                self.refresh_data.hide()
+                self.advanced_button.hide()
+                self.and_button.hide()
+                self.or_button.hide()
+
+        if self.code_prompt.isEnabled():
+            self.grid.addWidget(self.text_label, 0, 1)
+            self.grid.addWidget(self.code_prompt, 1, 0)
+            self.grid.addWidget(self.advanced_filter, 1, 1)
+            self.grid.addWidget(self.refresh_data_adv, 1, 2)
+            self.grid.addWidget(self.basic_button, 2, 2)
+
+        else:
+            self.refresh_data_adv.show()
+            self.code_prompt.setEnabled(True)
+            self.text_label.show()
+            self.code_prompt.show()
+            self.advanced_filter.show()
+            self.basic_button.show()
+
     def set_triggers(self):
 
         self.and_button.clicked.connect(self.and_conditionals)
         self.or_button.clicked.connect(self.or_conditionals)
         self.refresh_data.clicked.connect(self.eval_filter)
+        self.advanced_button.clicked.connect(self.advanced_layout)
+        self.basic_button.clicked.connect(self.revert_to_basic)
 
     def add_labels(self):
         self.grid.addWidget(self.open_label, 0, 0)
@@ -657,6 +728,7 @@ class FilterDialog(QtGui.QDialog):
         self.grid.addWidget(self.and_button, self.cur_row, 5)
         self.grid.addWidget(self.or_button, self.cur_row, 6)
         self.grid.addWidget(self.refresh_data, self.cur_row + 1, 6)
+        self.grid.addWidget(self.advanced_button, self.cur_row + 1, 5)
 
         if conditional_string:
 
