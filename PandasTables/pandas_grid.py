@@ -591,7 +591,7 @@ class FilterDialog(QtGui.QDialog):
         print_func = pp.Word("print(", exact=6)
         df_str = pp.Word("self.df", exact=7)
         period_match = pp.Word(".")
-        loc_match = pp.Word(".loc[", exact=4)
+        loc_match = pp.Word("loc[", exact=4)
         left_bracket = pp.Word("[")
         right_bracket = pp.Word("]")
         right_paren = pp.Word(")")
