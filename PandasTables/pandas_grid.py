@@ -247,8 +247,8 @@ class FilterDialog(QtGui.QDialog):
         self.lit_labels = QtGui.QLabel("Literals")
         self.col_label = QtGui.QLabel("Columns")
         self.con_label = QtGui.QLabel("Conditionals")
-        self.open_label = QtGui.QLabel("Open Parentheses")
-        self.close_label = QtGui.QLabel("Close Parentheses")
+        # self.open_label = QtGui.QLabel("Open Parentheses")
+        # self.close_label = QtGui.QLabel("Close Parentheses")
         self.text_label = QtGui.QLabel("Pandas Code")
         self.code_prompt = QtGui.QLabel("self.df.")
 
@@ -278,8 +278,6 @@ class FilterDialog(QtGui.QDialog):
     def eval_filter(self):
 
         indexes = []
-        parens = []
-
         prev_row = []
 
         for x in range(1, self.cur_row):
@@ -296,48 +294,8 @@ class FilterDialog(QtGui.QDialog):
 
                     literal_text = self.widgets_dict[x]["Literals"].text()
 
-            if self.widgets_dict[x]["OpenParens"].isChecked():
-                if not parens:
-
-                    parens.append([x-1])
-
-                else:
-                    parens.append([x-1])
-            if self.widgets_dict[x]["CloseParens"].isChecked():
-
-                if not parens:
-
-                    raise SyntaxError("Unbalanced parentheses")
-
-                else:
-
-                    for i in parens:
-
-                        if len(i) == 1:
-
-                            i.append(x-1)
-                            break
-
-                        else:
-
-                            continue
-
-                for p in parens:
-
-                    if len(p) != 2:
-
-                        raise SyntaxError("Unbalanced parenthesis")
-
-            # if self.widgets_dict[x]["AndLabel"].isVisible():
-            #     if parens:
-            #         parens[x - 1].append(self.widgets_dict[x]["AndLabel"].text())
-            #     else:
-            #         pass
-            # else:
-            #     pass
-
             if self.widgets_dict[x]["Conditionals"].currentText() == "isnull":
-                indexes.append(set(self.df.loc[self.df[self.df.columns.currentText()].isnull()].index.values))
+                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isnull()].index.values))
             elif self.widgets_dict[x]["Conditionals"].currentText() == "isnotnull":
                 indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isnull()].index.values))
             elif self.widgets_dict[x]["Conditionals"].currentText() == ">":
@@ -345,235 +303,67 @@ class FilterDialog(QtGui.QDialog):
             elif self.widgets_dict[x]["Conditionals"].currentText() == "<":
                 indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] < literal_text].index.values))
             elif self.widgets_dict[x]["Conditionals"].currentText() == ">=":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] >= literal_text]))
+                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] >= literal_text].index.values))
             elif self.widgets_dict[x]["Conditionals"].currentText() == "<=":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] <= literal_text]))
+                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] <= literal_text].index.values))
             elif self.widgets_dict[x]["Conditionals"].currentText() == "=":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] == literal_text]))
+                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] == literal_text].index.values))
             elif self.widgets_dict[x]["Conditionals"].currentText() == "!=":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] != literal_text]))
+                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] != literal_text].index.values))
 
-        if parens:
+        for i in indexes:
 
-            for p in parens:
 
-                for i in indexes[p[0]: p[1]]:
+            if self.widgets_dict[indexes.index(i) + 1]["CondCombo"].currentText() == "and":
 
-                    if self.widgets_dict[indexes.index(i) + 1]["AndLabel"].isVisible():
+                if not prev_row:
 
-                        if self.widgets_dict[indexes.index(i) + 1]["AndLabel"].text() == "and":
+                    prev_row = [i, "and"]
 
-                            if not prev_row:
-
-                                prev_row = [i, "and"]
-
-                            else:
-
-                                if prev_row[1] == "and":
-                                    prev_row = [prev_row[0].intersection(i), "and"]
-
-                                if prev_row[1] == "or":
-                                    prev_row = [prev_row[0].union(i), "and"]
-
-                        elif self.widgets_dict[indexes.index(i) + 1]["AndLabel"].text() == "or":
-
-                            if not prev_row:
-
-                                prev_row = [i, "or"]
-
-                            else:
-
-                                if prev_row[1] == "and":
-                                    prev_row = [prev_row[0].intersection(i), "or"]
-
-                                if prev_row[1] == "or":
-                                    prev_row = [prev_row[0].union(i), "or"]
-                    else:
-
-                        if not prev_row:
-                            prev_row = [i]
-
-                        else:
-
-                            raise SyntaxError("Missing and/or operator")
-
-                    if self.widgets_dict[indexes.index(i) + 1]["AndLabel"].text() == "and":
-
-                        if not prev_row:
-
-                            prev_row = [i, "and"]
-
-                        else:
-
-                            if prev_row[1] == "and":
-                                prev_row = [prev_row[0].intersection(i), "and"]
-
-                            if prev_row[1] == "or":
-                                prev_row = [prev_row[0].union(i), "and"]
-
-
-                    elif self.widgets_dict[indexes.index(i) + 1]["AndLabel"].text() == "or":
-
-                        if not prev_row:
-
-                            prev_row = [i, "or"]
-
-
-                        else:
-
-                            if prev_row[1] == "and":
-                                prev_row = [prev_row[0].intersection(i), "or"]
-
-                            if prev_row[1] == "or":
-                                prev_row = [prev_row[0].union(i), "or"]
-                    indexes.remove(i)
-
-                if indexes:
-
-                    for i in indexes:
-
-                        if self.widgets_dict[indexes.index(i) + 1]["AndLabel"].isVisible():
-
-                            if self.widgets_dict[indexes.index(i) + 1]["AndLabel"].text() == "and":
-
-                                if not prev_row:
-
-                                    prev_row = [i, "and"]
-
-                                else:
-
-                                    if prev_row[1] == "and":
-                                        prev_row = [prev_row[0].intersection(i), "and"]
-
-                                    if prev_row[1] == "or":
-                                        prev_row = [prev_row[0].union(i), "and"]
-
-                            elif self.widgets_dict[indexes.index(i) + 1]["AndLabel"].text() == "or":
-
-                                if not prev_row:
-
-                                    prev_row = [i, "or"]
-
-                                else:
-
-                                    if prev_row[1] == "and":
-                                        prev_row = [prev_row[0].intersection(i), "or"]
-
-                                    if prev_row[1] == "or":
-                                        prev_row = [prev_row[0].union(i), "or"]
-                        else:
-
-                            if not prev_row:
-                                prev_row = [i]
-
-                            else:
-
-                                raise SyntaxError("Missing and/or operator")
-
-                        if self.widgets_dict[indexes.index(i) + 1]["AndLabel"].text() == "and":
-
-                            if not prev_row:
-
-                                prev_row = [i, "and"]
-
-                            else:
-
-                                if prev_row[1] == "and":
-                                    prev_row = [prev_row[0].intersection(i), "and"]
-
-                                if prev_row[1] == "or":
-                                    prev_row = [prev_row[0].union(i), "and"]
-
-
-                        elif self.widgets_dict[indexes.index(i) + 1]["AndLabel"].text() == "or":
-
-                            if not prev_row:
-
-                                prev_row = [i, "or"]
-
-
-                            else:
-
-                                if prev_row[1] == "and":
-                                    prev_row = [prev_row[0].intersection(i), "or"]
-
-                                if prev_row[1] == "or":
-                                    prev_row = [prev_row[0].union(i), "or"]
-
-
-
-        else:
-
-            for i in indexes:
-
-                if self.widgets_dict[indexes.index(i) + 1]["AndLabel"].isVisible():
-
-                    if self.widgets_dict[indexes.index(i) + 1]["AndLabel"].text() == "and":
-
-                        if not prev_row:
-
-                            prev_row = [i, "and"]
-
-                        else:
-
-                            if prev_row[1] == "and":
-
-                                prev_row = [prev_row[0].intersection(i), "and"]
-
-                            if prev_row[1] == "or":
-
-                                prev_row = [prev_row[0].union(i), "and"]
-
-                    elif self.widgets_dict[indexes.index(i) + 1]["AndLabel"].text() == "or":
-
-                        if not prev_row:
-
-                            prev_row = [i, "or"]
-
-                        else:
-
-                            if prev_row[1] == "and":
-                                prev_row = [prev_row[0].intersection(i), "or"]
-
-                            if prev_row[1] == "or":
-                                prev_row = [prev_row[0].union(i), "or"]
                 else:
 
-                    if not prev_row:
+                    if prev_row[1] == "and":
 
-                        prev_row = [i]
+                        prev_row = [prev_row[0].intersection(i), "and"]
 
-                if self.widgets_dict[indexes.index(i) + 1]["AndLabel"].text() == "and":
+                    if prev_row[1] == "or":
 
-                    if not prev_row:
+                        prev_row = [prev_row[0].union(i), "and"]
 
-                        prev_row = [i, "and"]
+            elif self.widgets_dict[indexes.index(i) + 1]["CondCombo"].currentText() == "or":
 
+                if not prev_row:
+
+                    prev_row = [i, "or"]
+
+                else:
+
+                    if prev_row[1] == "and":
+                        prev_row = [prev_row[0].intersection(i), "or"]
+
+                    if prev_row[1] == "or":
+                        prev_row = [prev_row[0].union(i), "or"]
+            else:
+
+                if not prev_row:
+
+                    prev_row = [i]
+
+                else:
+
+                    if prev_row[1] == "and":
+
+                        prev_row = [prev_row[0].intersection(i), ""]
+
+                    elif prev_row[1] == "or":
+
+                        prev_row = [prev_row[0].union(i), ""]
 
                     else:
 
-                        if prev_row[1] == "and":
-                            prev_row = [prev_row[0].intersection(i), "and"]
+                        if prev_row[1] == "" and indexes.index(i) != len(indexes) - 1:
 
-                        if prev_row[1] == "or":
-                            prev_row = [prev_row[0].union(i), "and"]
-
-
-                elif self.widgets_dict[indexes.index(i) + 1]["AndLabel"].text() == "or":
-
-                    if not prev_row:
-
-                        prev_row = [i, "or"]
-
-
-                    else:
-
-                        if prev_row[1] == "and":
-                            prev_row = [prev_row[0].intersection(i), "or"]
-
-                        if prev_row[1] == "or":
-
-                            prev_row = [prev_row[0].union(i), "or"]
+                            ErrorDialog("Missing and/or statement")
 
         if not prev_row:
             df = self.df
@@ -641,9 +431,6 @@ class FilterDialog(QtGui.QDialog):
 
         self.code_prompt.setEnabled(False)
 
-        self.and_button.show()
-        self.or_button.show()
-
         for k, v in self.widgets_dict.items():
 
             for k2 in v.keys():
@@ -651,12 +438,8 @@ class FilterDialog(QtGui.QDialog):
                 self.lit_labels.show()
                 self.col_label.show()
                 self.con_label.show()
-                self.open_label.show()
-                self.close_label.show()
 
                 self.advanced_button.show()
-                self.and_button.show()
-                self.or_button.show()
                 self.refresh_data.show()
 
     def advanced_layout(self):
@@ -670,8 +453,7 @@ class FilterDialog(QtGui.QDialog):
                 self.lit_labels.hide()
                 self.col_label.hide()
                 self.con_label.hide()
-                self.open_label.hide()
-                self.close_label.hide()
+
 
                 self.refresh_data.hide()
                 self.advanced_button.hide()
@@ -695,77 +477,58 @@ class FilterDialog(QtGui.QDialog):
 
     def set_triggers(self):
 
-        self.and_button.clicked.connect(self.and_conditionals)
-        self.or_button.clicked.connect(self.or_conditionals)
         self.refresh_data.clicked.connect(self.eval_filter)
         self.advanced_button.clicked.connect(self.advanced_layout)
         self.basic_button.clicked.connect(self.revert_to_basic)
         self.refresh_data_adv.clicked.connect(self.eval_advaced)
 
     def add_labels(self):
-        self.grid.addWidget(self.open_label, 0, 0)
         self.grid.addWidget(self.col_label, 0, 1)
         self.grid.addWidget(self.con_label, 0, 2)
         self.grid.addWidget(self.lit_labels, 0, 3)
-        self.grid.addWidget(self.close_label, 0, 4)
 
         self.cur_row = 1
 
     def and_conditionals(self):
 
-        if self.cur_row <= 5:
+        sender = self.sender()
 
-            self.add_row("and")
+        if sender.currentText() == "and" or sender.currentText() == "or":
 
-        else:
-            self.widgets_dict[5]["AndLabel"].setText("and")
-            self.and_button.deleteLater()
-            self.or_button.deleteLater()
-            self.grid.addWidget(self.widgets_dict[5]["AndLabel"], 5, 5)
+            if self.cur_row < 5:
 
-    def or_conditionals(self):
+                self.add_row()
 
-        if self.cur_row <= 5:
-            self.add_row("or")
+            else:
+                self.add_row(False)
 
-        else:
-            self.widgets_dict[5]["AndLabel"].setText("or")
-            self.and_button.deleteLater()
-            self.or_button.deleteLater()
-            self.grid.addWidget(self.widgets_dict[5]["AndLabel"], 5, 5)
+    def add_row(self, add_conditional_combo=True):
 
-    def add_row(self, conditional_string=None):
-
-        self.widgets_dict.update({self.cur_row: {"OpenParens": QtGui.QCheckBox(), "Columns": QtGui.QComboBox(),
+        self.widgets_dict.update({self.cur_row: {"Columns": QtGui.QComboBox(),
                                                  "Conditionals": QtGui.QComboBox(), "Literals": QtGui.QLineEdit(),
-                                                 "CloseParens": QtGui.QCheckBox(), "AndLabel": QtGui.QLabel()}})
+                                                 "CondCombo": QtGui.QComboBox()}})
 
         self.widgets_dict[self.cur_row]["Columns"].addItems(self.df.columns.tolist())
-        self.widgets_dict[self.cur_row]["Conditionals"].addItems([">", "<", "=", ">=", "<=", "!=", "isnull",
+        self.widgets_dict[self.cur_row]["Conditionals"].addItems(["", ">", "<", "=", ">=", "<=", "!=", "isnull",
                                                                         "isnotnull"])
+        self.widgets_dict[self.cur_row]["CondCombo"].addItems(["", "and", "or"])
 
-        self.add_buttons(conditional_string)
+        self.add_buttons(add_conditional_combo)
 
+        self.widgets_dict[self.cur_row]["CondCombo"].currentIndexChanged.connect(self.and_conditionals)
         self.widgets_dict[self.cur_row]["Conditionals"].currentIndexChanged.connect(self.isnull_chosen)
 
         self.cur_row += 1
 
-    def add_buttons(self, conditional_string=None):
-
-        self.grid.addWidget(self.widgets_dict[self.cur_row]["OpenParens"], self.cur_row, 0)
+    def add_buttons(self, add_conditional_combo):
         self.grid.addWidget(self.widgets_dict[self.cur_row]["Columns"], self.cur_row, 1)
         self.grid.addWidget(self.widgets_dict[self.cur_row]["Conditionals"], self.cur_row, 2)
         self.grid.addWidget(self.widgets_dict[self.cur_row]["Literals"], self.cur_row, 3)
-        self.grid.addWidget(self.widgets_dict[self.cur_row]["CloseParens"], self.cur_row, 4)
-        self.grid.addWidget(self.and_button, self.cur_row, 5)
-        self.grid.addWidget(self.or_button, self.cur_row, 6)
         self.grid.addWidget(self.refresh_data, self.cur_row + 1, 6)
         self.grid.addWidget(self.advanced_button, self.cur_row + 1, 5)
 
-        if conditional_string:
-
-            self.grid.addWidget(self.widgets_dict[self.cur_row - 1]["AndLabel"], self.cur_row - 1, 5)
-            self.widgets_dict[self.cur_row - 1]["AndLabel"].setText(conditional_string)
+        if add_conditional_combo:
+            self.grid.addWidget(self.widgets_dict[self.cur_row]["CondCombo"], self.cur_row, 5)
 
     def exit_action(self):
         self.close()
