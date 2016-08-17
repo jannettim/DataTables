@@ -2,6 +2,7 @@ from PyQt4 import QtCore
 from PyQt4 import QtGui
 import warnings
 import pyparsing as pp
+from numpy import float64
 import sys
 
 
@@ -310,6 +311,20 @@ class FilterDialog(QtGui.QDialog):
                 indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] == literal_text].index.values))
             elif self.widgets_dict[x]["Conditionals"].currentText() == "!=":
                 indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] != literal_text].index.values))
+            elif self.widgets_dict[x]["Conditionals"].currentText() == "isin":
+                if self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == float64:
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([float(l.strip()) for l in literal_text.split(",")])].index.values))
+                elif self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == int:
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([int(l.strip()) for l in literal_text.split(",")])].index.values))
+                else:
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([l.strip() for l in literal_text.split(",")])].index.values))
+            elif self.widgets_dict[x]["Conditionals"].currentText() == "isnotin":
+                if self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == float64:
+                    indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([float(l.strip()) for l in literal_text.split(",")])].index.values))
+                elif self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == int:
+                    indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([int(l.strip()) for l in literal_text.split(",")])].index.values))
+                else:
+                    indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([l.strip() for l in literal_text.split(",")])].index.values))
 
         for i in indexes:
 
@@ -510,7 +525,7 @@ class FilterDialog(QtGui.QDialog):
 
         self.widgets_dict[self.cur_row]["Columns"].addItems(self.df.columns.tolist())
         self.widgets_dict[self.cur_row]["Conditionals"].addItems(["", ">", "<", "=", ">=", "<=", "!=", "isnull",
-                                                                        "isnotnull"])
+                                                                        "isnotnull", "isin", "isnotin"])
         self.widgets_dict[self.cur_row]["CondCombo"].addItems(["", "and", "or"])
 
         self.add_buttons(add_conditional_combo)
