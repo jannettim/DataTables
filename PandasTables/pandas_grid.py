@@ -160,6 +160,7 @@ class TableWidget(QtGui.QTableWidget):
 
         self.setColumnCount(len(self.df.columns))
         self.setRowCount(len(self.df.index))
+        self.update_thread = WorkerThread(self)
 
         self.init_ui(width, height)
 
@@ -213,18 +214,37 @@ class TableWidget(QtGui.QTableWidget):
 
     def set_data(self, df):
 
-        for i in range(len(df.index)):
-            for j in range(len(df.columns)):
-                self.setItem(i, j, QtGui.QTableWidgetItem(str(df.iat[i, j])))
+        if self.update_thread.isRunning():
+            pass
+
+        else:
+            self.update_thread.start()
+
+        self.update_thread.set_data(df)
+        self.update_thread.exit()
+
+        # for i in range(len(df.index)):
+        #     for j in range(len(df.columns)):
+        #         self.setItem(i, j, QtGui.QTableWidgetItem(str(df.iat[i, j])))
 
     def update_data(self, df):
 
-        self.clearContents()
+        if self.update_thread.isRunning():
+            pass
 
-        self.setHorizontalHeaderLabels(df.columns.tolist())
-        self.setColumnCount(len(df.columns.tolist()))
-        self.setRowCount(len(df.index))
-        self.set_data(df)
+        else:
+            self.update_thread.start()
+
+        self.update_thread.update_data(df)
+
+        # self.clearContents()
+        #
+        # self.setHorizontalHeaderLabels(df.columns.tolist())
+        # self.setColumnCount(len(df.columns.tolist()))
+        # self.setRowCount(len(df.index))
+        # self.set_data(df)
+
+        self.update_thread.exit()
 
 
 class FilterDialog(QtGui.QDialog):
@@ -700,3 +720,26 @@ class ErrorDialog(QtGui.QDialog):
 
         self.grid.addWidget(self.err_msg, 0, 0)
         self.grid.addWidget(self.ok_button)
+
+class WorkerThread(QtCore.QThread):
+
+    def __init__(self, table):
+
+        QtCore.QThread.__init__(self)
+        self.table = table
+
+
+    def set_data(self, df):
+
+        for i in range(len(df.index)):
+            for j in range(len(df.columns)):
+                self.table.setItem(i, j, QtGui.QTableWidgetItem(str(df.iat[i, j])))
+
+    def update_data(self, df):
+
+        self.table.clearContents()
+
+        self.table.setHorizontalHeaderLabels(df.columns.tolist())
+        self.table.setColumnCount(len(df.columns.tolist()))
+        self.table.setRowCount(len(df.index))
+        self.set_data(df)
