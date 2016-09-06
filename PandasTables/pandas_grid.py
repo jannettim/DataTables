@@ -219,6 +219,8 @@ class TableWidget(QtGui.QTableWidget):
 
     def update_data(self, df):
 
+        self.clearContents()
+
         self.setHorizontalHeaderLabels(df.columns.tolist())
         self.setColumnCount(len(df.columns.tolist()))
         self.setRowCount(len(df.index))
