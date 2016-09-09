@@ -12,7 +12,7 @@ class PandasTable(QtGui.QMainWindow):
 
         super(PandasTable, self).__init__()
         self.setWindowTitle(window_title)
-        self.datatable = TableWidget(df, width, height, editable)
+        self.datatable = TableWidget(df, self, width, height, editable)
         self.main_layout = QtGui.QVBoxLayout()
 
         self.next_action = QtGui.QAction(QtGui.QIcon(""), 'Next', self)
@@ -23,6 +23,8 @@ class PandasTable(QtGui.QMainWindow):
         self.tail_action = QtGui.QAction(QtGui.QIcon(""), "Tail", self)
         self.columns_action = QtGui.QAction(QtGui.QIcon(""), "Show Columns", self)
         self.row_action = QtGui.QAction(QtGui.QIcon(""), "Show Rows", self)
+        self.progressbar = QtGui.QProgressBar()
+        self.statusbar = self.statusBar()
 
         self.set_triggers()
 
@@ -111,6 +113,7 @@ class PandasTable(QtGui.QMainWindow):
 
         self.resize(width, height)
 
+
         self.show()
 
     def open_input_dialog(self):
@@ -137,7 +140,7 @@ class PandasTable(QtGui.QMainWindow):
 
 class TableWidget(QtGui.QTableWidget):
 
-    def __init__(self, df, width=1000, height=500, editable=False, window_title="DataFrame Viewer"):
+    def __init__(self, df, parent, width=1000, height=500, editable=False, window_title="DataFrame Viewer"):
 
         super(TableWidget, self).__init__()
 
@@ -632,7 +635,7 @@ class InputDialog(QtGui.QDialog):
             self.label.deleteLater()
             self.ok_button.deleteLater()
 
-            vd = TableWidget(self.df.head(int(self.filter_input.text())))
+            vd = TableWidget(self.df.head(int(self.filter_input.text())), self)
             self.grid.addWidget(vd, 0, 0)
 
         elif self.box_type == "Tail":
@@ -643,7 +646,7 @@ class InputDialog(QtGui.QDialog):
             self.label.deleteLater()
             self.ok_button.deleteLater()
 
-            vd = TableWidget(self.df.tail(int(self.filter_input.text())))
+            vd = TableWidget(self.df.tail(int(self.filter_input.text())), self)
             self.grid.addWidget(vd, 0, 0)
 
         elif self.box_type == "Show Columns":
@@ -655,7 +658,7 @@ class InputDialog(QtGui.QDialog):
             try:
                 self.resize(500, 500)
                 new_df = self.df[[c.strip() for c in self.filter_input.text().split(",")]]
-                vd = TableWidget(new_df)
+                vd = TableWidget(new_df, self)
                 self.grid.addWidget(vd, 0, 0)
             except KeyError:
 
@@ -677,19 +680,19 @@ class InputDialog(QtGui.QDialog):
             if text1 and text2:
 
                 new_df = self.df[int(text1):int(text2)]
-                vd = TableWidget(new_df)
+                vd = TableWidget(new_df, self)
                 self.grid.addWidget(vd, 0, 0)
 
             elif text1 and not text2:
 
                 new_df = self.df.iloc[[int(text1)]]
-                vd = TableWidget(new_df)
+                vd = TableWidget(new_df, self)
                 self.grid.addWidget(vd, 0, 0)
 
             elif not text1 and text2:
 
                 new_df = self.df[:int(text2)]
-                vd = TableWidget(new_df)
+                vd = TableWidget(new_df, self)
                 self.grid.addWidget(vd, 0, 0)
 
 
@@ -722,6 +725,8 @@ class ErrorDialog(QtGui.QDialog):
         self.grid.addWidget(self.ok_button)
 
 class WorkerThread(QtCore.QThread):
+
+    tick = QtCore.pyqtSignal(int, name="changed")
 
     def __init__(self, table):
 
