@@ -3,6 +3,8 @@ from PyQt4 import QtGui
 import warnings
 import pyparsing as pp
 from numpy import float64
+import re
+import pandas
 import sys
 
 
@@ -23,6 +25,7 @@ class PandasTable(QtGui.QMainWindow):
         self.tail_action = QtGui.QAction(QtGui.QIcon(""), "Tail", self)
         self.columns_action = QtGui.QAction(QtGui.QIcon(""), "Show Columns", self)
         self.row_action = QtGui.QAction(QtGui.QIcon(""), "Show Rows", self)
+        self.export = QtGui.QAction(QtGui.QIcon(""), "Export", self)
         self.progressbar = QtGui.QProgressBar()
         self.statusbar = self.statusBar()
 
@@ -52,6 +55,7 @@ class PandasTable(QtGui.QMainWindow):
 
         menubar = self.menuBar()
         file_menu = menubar.addMenu("&File")
+        file_menu.addAction(self.export)
         edit_menu = menubar.addMenu("&Edit")
         edit_menu.addAction(self.revert_action)
         edit_menu.addAction(self.filter_action)
@@ -72,6 +76,7 @@ class PandasTable(QtGui.QMainWindow):
         self.tail_action.setShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_T))
         self.columns_action.setShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.SHIFT + QtCore.Qt.Key_C))
         self.row_action.setShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.ALT + QtCore.Qt.Key_R))
+        self.export.setShortcut(QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_S))
 
     def get_tooltips(self):
 
@@ -82,6 +87,7 @@ class PandasTable(QtGui.QMainWindow):
         self.tail_action.setToolTip("Open dialog box with last n rows")
         self.columns_action.setToolTip("Open dialog box with selected columns")
         self.row_action.setToolTip("Open dialog box with selected rows")
+        self.export.setToolTip("Export table as file")
 
     def set_triggers(self):
 
@@ -93,6 +99,7 @@ class PandasTable(QtGui.QMainWindow):
         self.tail_action.triggered.connect(self.open_input_dialog)
         self.columns_action.triggered.connect(self.open_input_dialog)
         self.row_action.triggered.connect(self.open_input_dialog)
+        self.export.triggered.connect(self.open_input_dialog)
 
     def create_toolbar(self):
 
@@ -120,7 +127,23 @@ class PandasTable(QtGui.QMainWindow):
 
         sender = self.sender()
 
-        i_dialog = InputDialog(sender.text(), self.datatable.df)
+        if sender.text() == "Export":
+
+            filename = QtGui.QFileDialog.getSaveFileName(self, "Save file", "", self.tr('*.txt;;*.csv;;*.xlsx'))
+            if re.search(r'.*\.txt', filename):
+                self.datatable.df.to_csv(filename, sep="\t")
+            elif re.search(r'.*\.csv', filename):
+                self.datatable.df.to_csv(filename, sep=",")
+            elif re.search(r'.*\.xlsx', filename):
+                wb = pandas.ExcelWriter(filename)
+                self.datatable.df.to_excel(wb, "Sheet1")
+
+
+            # i_dialog = ExportFile(sender.text(), self.datatable.df)
+
+        else:
+
+            i_dialog = InputDialog(sender.text(), self.datatable.df)
 
     def open_filter_dialog(self):
 
@@ -723,6 +746,22 @@ class ErrorDialog(QtGui.QDialog):
 
         self.grid.addWidget(self.err_msg, 0, 0)
         self.grid.addWidget(self.ok_button)
+
+class ExportFile(QtGui.QFileDialog):
+
+    def __init__(self, sender, df):
+
+        super(ExportFile, self).__init__()
+
+        self.grid = QtGui.QGridLayout()
+        self.df = df
+
+        self.init_ui()
+
+        self.exec_()
+
+    def init_ui(self):
+        self.getSaveFileNameAndFilter()
 
 class WorkerThread(QtCore.QThread):
 
