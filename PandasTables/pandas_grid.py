@@ -138,9 +138,6 @@ class PandasTable(QtGui.QMainWindow):
                 wb = pandas.ExcelWriter(filename)
                 self.datatable.df.to_excel(wb, "Sheet1")
 
-
-            # i_dialog = ExportFile(sender.text(), self.datatable.df)
-
         else:
 
             i_dialog = InputDialog(sender.text(), self.datatable.df)
@@ -747,21 +744,6 @@ class ErrorDialog(QtGui.QDialog):
         self.grid.addWidget(self.err_msg, 0, 0)
         self.grid.addWidget(self.ok_button)
 
-class ExportFile(QtGui.QFileDialog):
-
-    def __init__(self, sender, df):
-
-        super(ExportFile, self).__init__()
-
-        self.grid = QtGui.QGridLayout()
-        self.df = df
-
-        self.init_ui()
-
-        self.exec_()
-
-    def init_ui(self):
-        self.getSaveFileNameAndFilter()
 
 class WorkerThread(QtCore.QThread):
 
