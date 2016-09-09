@@ -8,11 +8,11 @@ import pandas
 import sys
 
 
-class PandasTable(QtGui.QMainWindow):
+class DataTable(QtGui.QMainWindow):
 
     def __init__(self, df, width=1000, height=500, editable=False, window_title="DataFrame Viewer"):
 
-        super(PandasTable, self).__init__()
+        super(DataTable, self).__init__()
         self.setWindowTitle(window_title)
         self.datatable = TableWidget(df, self, width, height, editable)
         self.main_layout = QtGui.QVBoxLayout()
