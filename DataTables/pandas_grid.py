@@ -295,7 +295,7 @@ class FilterDialog(QtGui.QDialog):
         self.con_label = QtGui.QLabel("Conditionals")
         # self.open_label = QtGui.QLabel("Open Parentheses")
         # self.close_label = QtGui.QLabel("Close Parentheses")
-        self.text_label = QtGui.QLabel("Pandas Code")
+        self.text_label = QtGui.QLabel("Syntax")
         self.code_prompt = QtGui.QLabel("self.df.")
 
         self.refresh_data = QtGui.QPushButton("Refresh Data")
@@ -447,6 +447,8 @@ class FilterDialog(QtGui.QDialog):
         right_paren = pp.Word(")")
         gte = pp.Word(">=", exact=2)  # <===!=", exact=2)
         lte = pp.Word("<=", exact=2)
+        gt = pp.Word(">", exact=1)
+        lt = pp.Word("<", exact=1)
         quote = pp.Word("\"", exact=1)
         equal_cond = pp.Word("==", exact=2)
         nequal_cond = pp.Word("!=", exact=2)
@@ -457,7 +459,7 @@ class FilterDialog(QtGui.QDialog):
             columns_df.append(pp.Word(x, exact=len(x)))
 
         parse_eval = loc_match + pp.OneOrMore(pp.ZeroOrMore("(") + pp.Optional("~") + "self.df" + pp.Or([".", "[\"", "['"]) + pp.Or(columns_df) + pp.Optional(pp.Or(["\"]", "']"])) + \
-                     pp.Or([gte, lte, equal_cond, nequal_cond, pp.Word(".isin([", exact=7), pp.Word(".isnull(", exact=8)]) + pp.Optional(pp.Or(["\"", "'"])) + pp.Or(python_str_floats) + pp.Optional(pp.Or("\"]", "']")) + pp.ZeroOrMore(")") + pp.Optional(pp.Or(["|", "&"]))) + "]"
+                     pp.Or([gte, lte, equal_cond, nequal_cond, gt, lt, pp.Word(".isin([", exact=7), pp.Word(".isnull(", exact=8)]) + pp.Optional(pp.Or(["\"", "'"])) + pp.Or(python_str_floats) + pp.Optional(pp.Or("\"]", "']")) + pp.ZeroOrMore(")") + pp.Optional(pp.Or(["|", "&"]))) + "]"
 
         parse_eval.parseString(self.advanced_filter.text())
         exec("self.df = " + "self.df." + self.advanced_filter.text())
