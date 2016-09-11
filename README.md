@@ -1,4 +1,4 @@
-###PandasTables
+###DataTables
 
 A package for displaying dataframes in a GUI.
 
@@ -9,19 +9,19 @@ PyQt4
 #####Usage Example
 
 ```python
-df1 = pandas.DataFrame(np.random.randn(10, 5), columns=["A", "B", "C", "D", "E"])
+df1 = pandas.DataFrame(np.random.randn(1000, 10), columns=["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"])#columns=[str(x) for x in range(0, 10)])
 
 app = QtGui.QApplication(sys.argv)
-datatable = PandasTable(df1, editable=True, window_title="test")
+datatable = DataTable(df1, editable=True, window_title="test")
 app.exec_()
 ```
 
 #####Usage Example - 2
 ```python
-df1 = pandas.DataFrame(np.random.randn(10, 5), columns=["A", "B", "C", "D", "E"])
+df1 = pandas.DataFrame(np.random.randn(1000, 10), columns=["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"])#columns=[str(x) for x in range(0, 10)])
 df2 = pandas.DataFrame(np.random.randn(50, 3), columns=["F", "G", "H"])
 
 app = QtGui.QApplication(sys.argv)
-datatable = PandasTable([df1, df2], editable=True, window_title="test")
+datatable = DataTable([df1, df2], editable=True, window_title="DataTables")
 app.exec_()
 ```
