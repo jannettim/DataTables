@@ -148,7 +148,7 @@ class DataTable(QtGui.QMainWindow):
 
     def revert_df(self):
 
-        self.datatable.update_data(self.datatable.df)
+        self.datatable.update_data(self.datatable.original_df)
 
     def exit_action(self):
         self.close()
@@ -180,6 +180,8 @@ class TableWidget(QtGui.QTableWidget):
             self.table_iter = None
             self.iter_index = None
             self.df = df
+
+        self.original_df = self.df.copy()
 
         self.setColumnCount(len(self.df.columns))
         self.setRowCount(len(self.df.index))
@@ -223,6 +225,7 @@ class TableWidget(QtGui.QTableWidget):
         self.clear()
         self.iter_index += 1
         self.df = self.table_iter[self.iter_index]
+        self.original_df = self.df.copy()
 
         self.setHorizontalHeaderLabels(self.df.columns.tolist())
         self.setColumnCount(len(self.df.columns.tolist()))
