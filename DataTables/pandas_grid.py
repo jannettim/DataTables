@@ -250,6 +250,8 @@ class TableWidget(QtGui.QTableWidget):
 
     def set_data(self, df):
 
+        self.df = df
+
         if self.update_thread.isRunning():
             pass
 
@@ -260,6 +262,8 @@ class TableWidget(QtGui.QTableWidget):
         self.update_thread.exit()
 
     def update_data(self, df):
+
+        self.df = df
 
         if self.update_thread.isRunning():
             pass
