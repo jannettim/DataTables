@@ -204,9 +204,9 @@ class TableWidget(QtGui.QTableWidget):
         self.setHorizontalHeaderLabels(self.df.columns.tolist())
         self.set_data(self.df)
 
-        self.itemChanged.connect(self.edit_dataframe)
+        self.itemChanged.connect(self.edit_data)
 
-    def edit_dataframe(self):
+    def edit_data(self):
 
         if self.update_thread.isRunning():
 
