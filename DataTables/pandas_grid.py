@@ -208,6 +208,10 @@ class TableWidget(QtGui.QTableWidget):
 
     def edit_dataframe(self):
 
+        if self.update_thread.isRunning():
+
+            return None
+
         try:
 
             row = self.currentRow()
@@ -221,7 +225,7 @@ class TableWidget(QtGui.QTableWidget):
                 self.df.set_value(row, self.df.columns.tolist()[column], item.text())
                 self.df[self.df.columns.tolist()[column]] = self.df[self.df.columns.tolist()[column]].astype(col_type)
             except ValueError:
-                warnings.warn("Value supplied does not match dtype of pandas column.  Type of column converted to object.")
+                warnings.warn("Value supplied does not match data type of column.  Type of column converted to object.")
                 self.df[self.df.columns.tolist()[column]] = self.df[self.df.columns.tolist()[column]].astype(object)
 
         except AttributeError:
@@ -250,7 +254,7 @@ class TableWidget(QtGui.QTableWidget):
 
     def set_data(self, df):
 
-        self.df = df
+        self.df = df.copy()
 
         if self.update_thread.isRunning():
             pass
@@ -263,7 +267,7 @@ class TableWidget(QtGui.QTableWidget):
 
     def update_data(self, df):
 
-        self.df = df
+        self.df = df.copy()
 
         if self.update_thread.isRunning():
             pass
