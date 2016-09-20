@@ -14,8 +14,6 @@ class DataTable(QtGui.QMainWindow):
 
         super(DataTable, self).__init__()
         self.setWindowTitle(window_title)
-        self.datatable = TableWidget(df, self, width, height, editable)
-        self.main_layout = QtGui.QVBoxLayout()
 
         self.next_action = QtGui.QAction(QtGui.QIcon(""), 'Next', self)
         self.quit_action = QtGui.QAction(QtGui.QIcon(""), "Quit", self)
@@ -41,11 +39,14 @@ class DataTable(QtGui.QMainWindow):
 
             self.next_action.setEnabled(False)
 
+        self.tablewidget = TableWidget(df, self, width, height, editable)
+        self.main_layout = QtGui.QVBoxLayout()
+
         self.create_toolbar()
         self.get_shortcuts()
         self.get_menubar()
 
-        self.centralWidget = self.datatable
+        self.centralWidget = self.tablewidget
         self.centralWidget.setLayout(self.main_layout)
         self.setCentralWidget(self.centralWidget)
 
@@ -111,7 +112,7 @@ class DataTable(QtGui.QMainWindow):
 
     def clicked_next_button(self):
 
-        test = self.datatable.next_button_clicked()
+        test = self.tablewidget.next_button_clicked()
 
         if test:
             self.next_action.setEnabled(False)
@@ -120,6 +121,9 @@ class DataTable(QtGui.QMainWindow):
 
         self.resize(width, height)
 
+        self.progressbar.setGeometry(QtCore.QRect(30, 70, 481, 23))
+        self.progressbar.setValue(0)
+        self.statusbar.insertWidget(0, self.progressbar)
 
         self.show()
 
@@ -131,24 +135,24 @@ class DataTable(QtGui.QMainWindow):
 
             filename = QtGui.QFileDialog.getSaveFileName(self, "Save file", "", self.tr('*.txt;;*.csv;;*.xlsx'))
             if re.search(r'.*\.txt', filename):
-                self.datatable.df.to_csv(filename, sep="\t")
+                self.tablewidget.df.to_csv(filename, sep="\t")
             elif re.search(r'.*\.csv', filename):
-                self.datatable.df.to_csv(filename, sep=",")
+                self.tablewidget.df.to_csv(filename, sep=",")
             elif re.search(r'.*\.xlsx', filename):
                 wb = pandas.ExcelWriter(filename)
-                self.datatable.df.to_excel(wb, "Sheet1")
+                self.tablewidget.df.to_excel(wb, "Sheet1")
 
         else:
 
-            i_dialog = InputDialog(sender.text(), self.datatable.df)
+            i_dialog = InputDialog(sender.text(), self.tablewidget.df)
 
     def open_filter_dialog(self):
 
-        fd = FilterDialog(self.datatable.df, self.datatable)
+        fd = FilterDialog(self.tablewidget.df, self.tablewidget)
 
     def revert_df(self):
 
-        self.datatable.update_data(self.datatable.original_df)
+        self.tablewidget.update_data(self.tablewidget.original_df)
 
     def exit_action(self):
         self.close()
@@ -186,6 +190,10 @@ class TableWidget(QtGui.QTableWidget):
         self.setColumnCount(len(self.df.columns))
         self.setRowCount(len(self.df.index))
         self.update_thread = WorkerThread(self)
+        self.parent = self.parent
+        self.progressbar = parent.progressbar
+
+        self.update_thread.tick.connect(self.progressbar.setValue)
 
         self.init_ui(width, height)
 
@@ -220,6 +228,10 @@ class TableWidget(QtGui.QTableWidget):
 
             pass
 
+    def change_progress(self):
+
+        print(self.sender())
+
     def next_button_clicked(self):
 
         self.clear()
@@ -235,8 +247,6 @@ class TableWidget(QtGui.QTableWidget):
         if self.iter_index == len(self.table_iter) - 1:
 
             return True
-            # self.mw.next_button.deleteLater()
-            # self.hbox.addWidget(self.finish_button)
 
     def set_data(self, df):
 
@@ -246,12 +256,8 @@ class TableWidget(QtGui.QTableWidget):
         else:
             self.update_thread.start()
 
-        self.update_thread.set_data(df)
+        self.update_thread.set_data(df, self.progressbar)
         self.update_thread.exit()
-
-        # for i in range(len(df.index)):
-        #     for j in range(len(df.columns)):
-        #         self.setItem(i, j, QtGui.QTableWidgetItem(str(df.iat[i, j])))
 
     def update_data(self, df):
 
@@ -262,13 +268,6 @@ class TableWidget(QtGui.QTableWidget):
             self.update_thread.start()
 
         self.update_thread.update_data(df)
-
-        # self.clearContents()
-        #
-        # self.setHorizontalHeaderLabels(df.columns.tolist())
-        # self.setColumnCount(len(df.columns.tolist()))
-        # self.setRowCount(len(df.index))
-        # self.set_data(df)
 
         self.update_thread.exit()
 
@@ -760,11 +759,18 @@ class WorkerThread(QtCore.QThread):
         self.table = table
 
 
-    def set_data(self, df):
+    def set_data(self, df, progressbar=None):
 
+        dimensions = len(df.index)*len(df.columns)
+
+        count = 0
         for i in range(len(df.index)):
             for j in range(len(df.columns)):
                 self.table.setItem(i, j, QtGui.QTableWidgetItem(str(df.iat[i, j])))
+
+                count += 1
+
+                self.tick.emit((count/dimensions)*100)
 
     def update_data(self, df):
 
