@@ -663,12 +663,27 @@ class InputDialog(QtGui.QDialog):
         if self.box_type == "Head":
             self.resize(500, 500)
 
+            # head_window = LimitedTableWidget(self.df)#SecondWindow(self.df.head(int(self.filter_input.text())))
+            # head_window.show()
+            #
+            # self.close()
+            #
             self.filter_input.deleteLater()
             self.label.deleteLater()
             self.ok_button.deleteLater()
 
-            vd = TableWidget(self.df.head(int(self.filter_input.text())), self)
-            self.grid.addWidget(vd, 0, 0)
+            self.quit_action = QtGui.QAction(QtGui.QIcon(""), "Quit", self)
+            self.quit_action.triggered.connect(self.exit_action)
+            self.export_action = QtGui.QAction(QtGui.QIcon(""), "Export", self)
+            self.export_action.triggered.connect(self.export)
+
+            self.vd = LimitedTableWidget(self.df.head(int(self.filter_input.text())))
+            menu = QtGui.QMenuBar()
+            file_menu = menu.addMenu("&File")
+            file_menu.addAction(self.export_action)
+            file_menu.addAction(self.quit_action)
+            self.grid.addWidget(menu, 0, 0)
+            self.grid.addWidget(self.vd, 1, 0)
 
         elif self.box_type == "Tail":
 
@@ -727,6 +742,19 @@ class InputDialog(QtGui.QDialog):
                 vd = TableWidget(new_df, self)
                 self.grid.addWidget(vd, 0, 0)
 
+    def exit_action(self):
+        self.close()
+
+    def export(self):
+
+        filename = QtGui.QFileDialog.getSaveFileName(self, "Save file", "", self.tr('*.txt;;*.csv;;*.xlsx'))
+        if re.search(r'.*\.txt', filename):
+            self.vd.df.to_csv(filename, sep="\t")
+        elif re.search(r'.*\.csv', filename):
+            self.vd.df.to_csv(filename, sep=",")
+        elif re.search(r'.*\.xlsx', filename):
+            wb = pandas.ExcelWriter(filename)
+            self.vd.df.to_excel(wb, "Sheet1")
 
 class ErrorDialog(QtGui.QDialog):
 
@@ -755,6 +783,31 @@ class ErrorDialog(QtGui.QDialog):
 
         self.grid.addWidget(self.err_msg, 0, 0)
         self.grid.addWidget(self.ok_button)
+
+class LimitedTableWidget(QtGui.QTableWidget):
+
+    def __init__(self, df):
+
+        super(LimitedTableWidget, self).__init__()
+
+        self.df = df
+
+        self.setColumnCount(len(self.df.columns))
+        self.setRowCount(len(self.df.index))
+
+        self.init_ui()
+
+    def init_ui(self):
+
+        self.setHorizontalHeaderLabels(self.df.columns.tolist())
+        self.set_data(self.df)
+
+    def set_data(self, df):
+
+        for i in range(len(df.index)):
+            for j in range(len(df.columns)):
+                self.setItem(i, j, QtGui.QTableWidgetItem(str(df.iat[i, j])))
+
 
 
 class WorkerThread(QtCore.QThread):
