@@ -622,7 +622,8 @@ class InputDialog(QtGui.QDialog):
         self.rows_label1 = QtGui.QLabel("Start Value")
         self.rows_label2 = QtGui.QLabel("End Value")
         self.ok_button = QtGui.QPushButton("OK")
-
+        self.quit_action = QtGui.QAction(QtGui.QIcon(""), "Quit", self)
+        self.export_action = QtGui.QAction(QtGui.QIcon(""), "Export", self)
         self.ok_action = QtGui.QAction(QtGui.QIcon(""), "OK", self)
 
         self.set_triggers()
@@ -657,28 +658,21 @@ class InputDialog(QtGui.QDialog):
     def set_triggers(self):
 
         self.ok_button.clicked.connect(self.perform_actions)
+        self.quit_action.triggered.connect(self.exit_action)
+        self.export_action.triggered.connect(self.export)
 
     def perform_actions(self):
+
+        menu = QtGui.QMenuBar()
 
         if self.box_type == "Head":
             self.resize(500, 500)
 
-            # head_window = LimitedTableWidget(self.df)#SecondWindow(self.df.head(int(self.filter_input.text())))
-            # head_window.show()
-            #
-            # self.close()
-            #
             self.filter_input.deleteLater()
             self.label.deleteLater()
             self.ok_button.deleteLater()
 
-            self.quit_action = QtGui.QAction(QtGui.QIcon(""), "Quit", self)
-            self.quit_action.triggered.connect(self.exit_action)
-            self.export_action = QtGui.QAction(QtGui.QIcon(""), "Export", self)
-            self.export_action.triggered.connect(self.export)
-
             self.vd = LimitedTableWidget(self.df.head(int(self.filter_input.text())))
-            menu = QtGui.QMenuBar()
             file_menu = menu.addMenu("&File")
             file_menu.addAction(self.export_action)
             file_menu.addAction(self.quit_action)
@@ -693,8 +687,13 @@ class InputDialog(QtGui.QDialog):
             self.label.deleteLater()
             self.ok_button.deleteLater()
 
-            vd = TableWidget(self.df.tail(int(self.filter_input.text())), self)
-            self.grid.addWidget(vd, 0, 0)
+            self.vd = LimitedTableWidget(self.df.tail(int(self.filter_input.text())))
+
+            file_menu = menu.addMenu("&File")
+            file_menu.addAction(self.export_action)
+            file_menu.addAction(self.quit_action)
+            self.grid.addWidget(menu, 0, 0)
+            self.grid.addWidget(self.vd, 1, 0)
 
         elif self.box_type == "Show Columns":
 
@@ -705,8 +704,14 @@ class InputDialog(QtGui.QDialog):
             try:
                 self.resize(500, 500)
                 new_df = self.df[[c.strip() for c in self.filter_input.text().split(",")]]
-                vd = TableWidget(new_df, self)
-                self.grid.addWidget(vd, 0, 0)
+                self.vd = LimitedTableWidget(new_df)
+                self.grid.addWidget(self.vd, 0, 0)
+
+                file_menu = menu.addMenu("&File")
+                file_menu.addAction(self.export_action)
+                file_menu.addAction(self.quit_action)
+                self.grid.addWidget(menu, 0, 0)
+                self.grid.addWidget(self.vd, 1, 0)
             except KeyError:
 
                 ErrorDialog("One or more column names provided not recognized.  Please enter column names separated by commas.")
@@ -727,20 +732,26 @@ class InputDialog(QtGui.QDialog):
             if text1 and text2:
 
                 new_df = self.df[int(text1):int(text2)]
-                vd = TableWidget(new_df, self)
-                self.grid.addWidget(vd, 0, 0)
+                self.vd = LimitedTableWidget(new_df)
+                self.grid.addWidget(self.vd, 0, 0)
 
             elif text1 and not text2:
 
                 new_df = self.df.iloc[[int(text1)]]
-                vd = TableWidget(new_df, self)
-                self.grid.addWidget(vd, 0, 0)
+                self.vd = LimitedTableWidget(new_df)
+                self.grid.addWidget(self.vd, 0, 0)
 
             elif not text1 and text2:
 
                 new_df = self.df[:int(text2)]
-                vd = TableWidget(new_df, self)
-                self.grid.addWidget(vd, 0, 0)
+                self.vd = LimitedTableWidget(new_df)
+                self.grid.addWidget(self.vd, 0, 0)
+
+            file_menu = menu.addMenu("&File")
+            file_menu.addAction(self.export_action)
+            file_menu.addAction(self.quit_action)
+            self.grid.addWidget(menu, 0, 0)
+            self.grid.addWidget(self.vd, 1, 0)
 
     def exit_action(self):
         self.close()
