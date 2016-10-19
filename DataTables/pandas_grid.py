@@ -204,9 +204,13 @@ class TableWidget(QtGui.QTableWidget):
         self.setHorizontalHeaderLabels(self.df.columns.tolist())
         self.set_data(self.df)
 
-        self.itemChanged.connect(self.edit_dataframe)
+        self.itemChanged.connect(self.edit_data)
 
-    def edit_dataframe(self):
+    def edit_data(self):
+
+        if self.update_thread.isRunning():
+
+            return None
 
         try:
 
@@ -221,7 +225,7 @@ class TableWidget(QtGui.QTableWidget):
                 self.df.set_value(row, self.df.columns.tolist()[column], item.text())
                 self.df[self.df.columns.tolist()[column]] = self.df[self.df.columns.tolist()[column]].astype(col_type)
             except ValueError:
-                warnings.warn("Value supplied does not match dtype of pandas column.  Type of column converted to object.")
+                warnings.warn("Value supplied does not match data type of column.  Type of column converted to object.")
                 self.df[self.df.columns.tolist()[column]] = self.df[self.df.columns.tolist()[column]].astype(object)
 
         except AttributeError:
@@ -250,6 +254,8 @@ class TableWidget(QtGui.QTableWidget):
 
     def set_data(self, df):
 
+        self.df = df.copy()
+
         if self.update_thread.isRunning():
             pass
 
@@ -260,6 +266,8 @@ class TableWidget(QtGui.QTableWidget):
         self.update_thread.exit()
 
     def update_data(self, df):
+
+        self.df = df.copy()
 
         if self.update_thread.isRunning():
             pass
@@ -614,7 +622,8 @@ class InputDialog(QtGui.QDialog):
         self.rows_label1 = QtGui.QLabel("Start Value")
         self.rows_label2 = QtGui.QLabel("End Value")
         self.ok_button = QtGui.QPushButton("OK")
-
+        self.quit_action = QtGui.QAction(QtGui.QIcon(""), "Quit", self)
+        self.export_action = QtGui.QAction(QtGui.QIcon(""), "Export", self)
         self.ok_action = QtGui.QAction(QtGui.QIcon(""), "OK", self)
 
         self.set_triggers()
@@ -649,8 +658,12 @@ class InputDialog(QtGui.QDialog):
     def set_triggers(self):
 
         self.ok_button.clicked.connect(self.perform_actions)
+        self.quit_action.triggered.connect(self.exit_action)
+        self.export_action.triggered.connect(self.export)
 
     def perform_actions(self):
+
+        menu = QtGui.QMenuBar()
 
         if self.box_type == "Head":
             self.resize(500, 500)
@@ -659,8 +672,12 @@ class InputDialog(QtGui.QDialog):
             self.label.deleteLater()
             self.ok_button.deleteLater()
 
-            vd = TableWidget(self.df.head(int(self.filter_input.text())), self)
-            self.grid.addWidget(vd, 0, 0)
+            self.vd = LimitedTableWidget(self.df.head(int(self.filter_input.text())))
+            file_menu = menu.addMenu("&File")
+            file_menu.addAction(self.export_action)
+            file_menu.addAction(self.quit_action)
+            self.grid.addWidget(menu, 0, 0)
+            self.grid.addWidget(self.vd, 1, 0)
 
         elif self.box_type == "Tail":
 
@@ -670,8 +687,13 @@ class InputDialog(QtGui.QDialog):
             self.label.deleteLater()
             self.ok_button.deleteLater()
 
-            vd = TableWidget(self.df.tail(int(self.filter_input.text())), self)
-            self.grid.addWidget(vd, 0, 0)
+            self.vd = LimitedTableWidget(self.df.tail(int(self.filter_input.text())))
+
+            file_menu = menu.addMenu("&File")
+            file_menu.addAction(self.export_action)
+            file_menu.addAction(self.quit_action)
+            self.grid.addWidget(menu, 0, 0)
+            self.grid.addWidget(self.vd, 1, 0)
 
         elif self.box_type == "Show Columns":
 
@@ -682,8 +704,14 @@ class InputDialog(QtGui.QDialog):
             try:
                 self.resize(500, 500)
                 new_df = self.df[[c.strip() for c in self.filter_input.text().split(",")]]
-                vd = TableWidget(new_df, self)
-                self.grid.addWidget(vd, 0, 0)
+                self.vd = LimitedTableWidget(new_df)
+                self.grid.addWidget(self.vd, 0, 0)
+
+                file_menu = menu.addMenu("&File")
+                file_menu.addAction(self.export_action)
+                file_menu.addAction(self.quit_action)
+                self.grid.addWidget(menu, 0, 0)
+                self.grid.addWidget(self.vd, 1, 0)
             except KeyError:
 
                 ErrorDialog("One or more column names provided not recognized.  Please enter column names separated by commas.")
@@ -704,21 +732,40 @@ class InputDialog(QtGui.QDialog):
             if text1 and text2:
 
                 new_df = self.df[int(text1):int(text2)]
-                vd = TableWidget(new_df, self)
-                self.grid.addWidget(vd, 0, 0)
+                self.vd = LimitedTableWidget(new_df)
+                self.grid.addWidget(self.vd, 0, 0)
 
             elif text1 and not text2:
 
                 new_df = self.df.iloc[[int(text1)]]
-                vd = TableWidget(new_df, self)
-                self.grid.addWidget(vd, 0, 0)
+                self.vd = LimitedTableWidget(new_df)
+                self.grid.addWidget(self.vd, 0, 0)
 
             elif not text1 and text2:
 
                 new_df = self.df[:int(text2)]
-                vd = TableWidget(new_df, self)
-                self.grid.addWidget(vd, 0, 0)
+                self.vd = LimitedTableWidget(new_df)
+                self.grid.addWidget(self.vd, 0, 0)
 
+            file_menu = menu.addMenu("&File")
+            file_menu.addAction(self.export_action)
+            file_menu.addAction(self.quit_action)
+            self.grid.addWidget(menu, 0, 0)
+            self.grid.addWidget(self.vd, 1, 0)
+
+    def exit_action(self):
+        self.close()
+
+    def export(self):
+
+        filename = QtGui.QFileDialog.getSaveFileName(self, "Save file", "", self.tr('*.txt;;*.csv;;*.xlsx'))
+        if re.search(r'.*\.txt', filename):
+            self.vd.df.to_csv(filename, sep="\t")
+        elif re.search(r'.*\.csv', filename):
+            self.vd.df.to_csv(filename, sep=",")
+        elif re.search(r'.*\.xlsx', filename):
+            wb = pandas.ExcelWriter(filename)
+            self.vd.df.to_excel(wb, "Sheet1")
 
 class ErrorDialog(QtGui.QDialog):
 
@@ -747,6 +794,31 @@ class ErrorDialog(QtGui.QDialog):
 
         self.grid.addWidget(self.err_msg, 0, 0)
         self.grid.addWidget(self.ok_button)
+
+class LimitedTableWidget(QtGui.QTableWidget):
+
+    def __init__(self, df):
+
+        super(LimitedTableWidget, self).__init__()
+
+        self.df = df
+
+        self.setColumnCount(len(self.df.columns))
+        self.setRowCount(len(self.df.index))
+
+        self.init_ui()
+
+    def init_ui(self):
+
+        self.setHorizontalHeaderLabels(self.df.columns.tolist())
+        self.set_data(self.df)
+
+    def set_data(self, df):
+
+        for i in range(len(df.index)):
+            for j in range(len(df.columns)):
+                self.setItem(i, j, QtGui.QTableWidgetItem(str(df.iat[i, j])))
+
 
 
 class WorkerThread(QtCore.QThread):
