@@ -303,8 +303,6 @@ class FilterDialog(QtGui.QDialog):
         self.lit_labels = QtGui.QLabel("Literals")
         self.col_label = QtGui.QLabel("Columns")
         self.con_label = QtGui.QLabel("Conditionals")
-        # self.open_label = QtGui.QLabel("Open Parentheses")
-        # self.close_label = QtGui.QLabel("Close Parentheses")
         self.text_label = QtGui.QLabel("Syntax")
         self.code_prompt = QtGui.QLabel("self.df.")
 
@@ -350,36 +348,40 @@ class FilterDialog(QtGui.QDialog):
 
                     literal_text = self.widgets_dict[x]["Literals"].text()
 
-            if self.widgets_dict[x]["Conditionals"].currentText() == "isnull":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isnull()].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "isnotnull":
-                indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isnull()].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == ">":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] > literal_text].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "<":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] < literal_text].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == ">=":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] >= literal_text].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "<=":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] <= literal_text].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "=":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] == literal_text].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "!=":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] != literal_text].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "isin":
-                if self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == float64:
-                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([float(l.strip()) for l in literal_text.split(",")])].index.values))
-                elif self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == int:
-                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([int(l.strip()) for l in literal_text.split(",")])].index.values))
-                else:
-                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([l.strip() for l in literal_text.split(",")])].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "isnotin":
-                if self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == float64:
-                    indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([float(l.strip()) for l in literal_text.split(",")])].index.values))
-                elif self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == int:
-                    indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([int(l.strip()) for l in literal_text.split(",")])].index.values))
-                else:
-                    indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([l.strip() for l in literal_text.split(",")])].index.values))
+            try:
+
+                if self.widgets_dict[x]["Conditionals"].currentText() == "isnull":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isnull()].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "isnotnull":
+                    indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isnull()].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == ">":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] > literal_text].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "<":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] < literal_text].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == ">=":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] >= literal_text].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "<=":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] <= literal_text].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "=":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] == literal_text].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "!=":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] != literal_text].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "isin":
+                    if self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == float64:
+                        indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([float(l.strip()) for l in literal_text.split(",")])].index.values))
+                    elif self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == int:
+                        indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([int(l.strip()) for l in literal_text.split(",")])].index.values))
+                    else:
+                        indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([l.strip() for l in literal_text.split(",")])].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "isnotin":
+                    if self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == float64:
+                        indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([float(l.strip()) for l in literal_text.split(",")])].index.values))
+                    elif self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == int:
+                        indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([int(l.strip()) for l in literal_text.split(",")])].index.values))
+                    else:
+                        indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([l.strip() for l in literal_text.split(",")])].index.values))
+            except TypeError:
+                ErrorDialog("TypeError: invalid type comparison")
 
         for i in indexes:
 
@@ -470,9 +472,18 @@ class FilterDialog(QtGui.QDialog):
 
         parse_eval = loc_match + pp.OneOrMore(pp.ZeroOrMore("(") + pp.Optional("~") + "self.df" + pp.Or([".", "[\"", "['"]) + pp.Or(columns_df) + pp.Optional(pp.Or(["\"]", "']"])) + \
                      pp.Or([gte, lte, equal_cond, nequal_cond, gt, lt, pp.Word(".isin([", exact=7), pp.Word(".isnull(", exact=8)]) + pp.Optional(pp.Or(["\"", "'"])) + pp.Or(python_str_floats) + pp.Optional(pp.Or("\"]", "']")) + pp.ZeroOrMore(")") + pp.Optional(pp.Or(["|", "&"]))) + "]"
+        try:
+            parse_eval.parseString(self.advanced_filter.text())
+            try:
+                exec("self.df = " + "self.df." + self.advanced_filter.text())
+            except SyntaxError:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                ErrorDialog(str(exc_value))
 
-        parse_eval.parseString(self.advanced_filter.text())
-        exec("self.df = " + "self.df." + self.advanced_filter.text())
+        except pp.ParseException:
+
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            ErrorDialog(str(exc_value))
 
         self.parent.update_data(self.df)
         self.exit_action()
@@ -604,6 +615,7 @@ class FilterDialog(QtGui.QDialog):
 
     def exit_action(self):
         self.close()
+
 
 class InputDialog(QtGui.QDialog):
 
@@ -767,6 +779,7 @@ class InputDialog(QtGui.QDialog):
             wb = pandas.ExcelWriter(filename)
             self.vd.df.to_excel(wb, "Sheet1")
 
+
 class ErrorDialog(QtGui.QDialog):
 
     def __init__(self, msg):
@@ -793,7 +806,8 @@ class ErrorDialog(QtGui.QDialog):
         self.ok_button.setMaximumWidth(100)
 
         self.grid.addWidget(self.err_msg, 0, 0)
-        self.grid.addWidget(self.ok_button)
+        self.grid.addWidget(self.ok_button, 1, 0)
+
 
 class LimitedTableWidget(QtGui.QTableWidget):
 
@@ -818,7 +832,6 @@ class LimitedTableWidget(QtGui.QTableWidget):
         for i in range(len(df.index)):
             for j in range(len(df.columns)):
                 self.setItem(i, j, QtGui.QTableWidgetItem(str(df.iat[i, j])))
-
 
 
 class WorkerThread(QtCore.QThread):
