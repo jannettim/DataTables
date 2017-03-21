@@ -191,7 +191,10 @@ class TableWidget(QtGui.QTableWidget):
 
         # self.resize(width, height)
 
-        self.setHorizontalHeaderLabels(self.df.columns.tolist())
+        try:
+            self.setHorizontalHeaderLabels(self.df.columns.tolist())
+        except TypeError:
+            self.setHorizontalHeaderLabels([str(i) for i in self.df.columns.tolist()])
         self.set_data(self.df)
 
         self.itemChanged.connect(self.edit_dataframe)
