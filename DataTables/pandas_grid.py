@@ -14,8 +14,6 @@ class DataTable(QtGui.QMainWindow):
 
         super(DataTable, self).__init__()
         self.setWindowTitle(window_title)
-        self.datatable = TableWidget(df, self, width, height, editable)
-        self.main_layout = QtGui.QVBoxLayout()
 
         self.next_action = QtGui.QAction(QtGui.QIcon(""), 'Next', self)
         self.quit_action = QtGui.QAction(QtGui.QIcon(""), "Quit", self)
@@ -41,11 +39,14 @@ class DataTable(QtGui.QMainWindow):
 
             self.next_action.setEnabled(False)
 
+        self.tablewidget = TableWidget(df, self, width, height, editable)
+        self.main_layout = QtGui.QVBoxLayout()
+
         self.create_toolbar()
         self.get_shortcuts()
         self.get_menubar()
 
-        self.centralWidget = self.datatable
+        self.centralWidget = self.tablewidget
         self.centralWidget.setLayout(self.main_layout)
         self.setCentralWidget(self.centralWidget)
 
@@ -111,7 +112,7 @@ class DataTable(QtGui.QMainWindow):
 
     def clicked_next_button(self):
 
-        test = self.datatable.next_button_clicked()
+        test = self.tablewidget.next_button_clicked()
 
         if test:
             self.next_action.setEnabled(False)
@@ -120,6 +121,9 @@ class DataTable(QtGui.QMainWindow):
 
         self.resize(width, height)
 
+        self.progressbar.setGeometry(QtCore.QRect(30, 70, 481, 23))
+        self.progressbar.setValue(0)
+        self.statusbar.insertWidget(0, self.progressbar)
 
         self.show()
 
@@ -131,24 +135,24 @@ class DataTable(QtGui.QMainWindow):
 
             filename = QtGui.QFileDialog.getSaveFileName(self, "Save file", "", self.tr('*.txt;;*.csv;;*.xlsx'))
             if re.search(r'.*\.txt', filename):
-                self.datatable.df.to_csv(filename, sep="\t")
+                self.tablewidget.df.to_csv(filename, sep="\t")
             elif re.search(r'.*\.csv', filename):
-                self.datatable.df.to_csv(filename, sep=",")
+                self.tablewidget.df.to_csv(filename, sep=",")
             elif re.search(r'.*\.xlsx', filename):
                 wb = pandas.ExcelWriter(filename)
-                self.datatable.df.to_excel(wb, "Sheet1")
+                self.tablewidget.df.to_excel(wb, "Sheet1")
 
         else:
 
-            i_dialog = InputDialog(sender.text(), self.datatable.df)
+            i_dialog = InputDialog(sender.text(), self.tablewidget.df)
 
     def open_filter_dialog(self):
 
-        fd = FilterDialog(self.datatable.df, self.datatable)
+        fd = FilterDialog(self.tablewidget.df, self.tablewidget)
 
     def revert_df(self):
 
-        self.datatable.update_data(self.datatable.df)
+        self.tablewidget.update_data(self.tablewidget.original_df)
 
     def exit_action(self):
         self.close()
@@ -181,9 +185,15 @@ class TableWidget(QtGui.QTableWidget):
             self.iter_index = None
             self.df = df
 
+        self.original_df = self.df.copy()
+
         self.setColumnCount(len(self.df.columns))
         self.setRowCount(len(self.df.index))
         self.update_thread = WorkerThread(self)
+        self.parent = self.parent
+        self.progressbar = parent.progressbar
+
+        self.update_thread.tick.connect(self.progressbar.setValue)
 
         self.init_ui(width, height)
 
@@ -197,9 +207,13 @@ class TableWidget(QtGui.QTableWidget):
             self.setHorizontalHeaderLabels([str(i) for i in self.df.columns.tolist()])
         self.set_data(self.df)
 
-        self.itemChanged.connect(self.edit_dataframe)
+        self.itemChanged.connect(self.edit_data)
 
-    def edit_dataframe(self):
+    def edit_data(self):
+
+        if self.update_thread.isRunning():
+
+            return None
 
         try:
 
@@ -214,18 +228,23 @@ class TableWidget(QtGui.QTableWidget):
                 self.df.set_value(row, self.df.columns.tolist()[column], item.text())
                 self.df[self.df.columns.tolist()[column]] = self.df[self.df.columns.tolist()[column]].astype(col_type)
             except ValueError:
-                warnings.warn("Value supplied does not match dtype of pandas column.  Type of column converted to object.")
+                warnings.warn("Value supplied does not match data type of column.  Type of column converted to object.")
                 self.df[self.df.columns.tolist()[column]] = self.df[self.df.columns.tolist()[column]].astype(object)
 
         except AttributeError:
 
             pass
 
+    def change_progress(self):
+
+        print(self.sender())
+
     def next_button_clicked(self):
 
         self.clear()
         self.iter_index += 1
         self.df = self.table_iter[self.iter_index]
+        self.original_df = self.df.copy()
 
         self.setHorizontalHeaderLabels(self.df.columns.tolist())
         self.setColumnCount(len(self.df.columns.tolist()))
@@ -235,10 +254,10 @@ class TableWidget(QtGui.QTableWidget):
         if self.iter_index == len(self.table_iter) - 1:
 
             return True
-            # self.mw.next_button.deleteLater()
-            # self.hbox.addWidget(self.finish_button)
 
     def set_data(self, df):
+
+        self.df = df.copy()
 
         if self.update_thread.isRunning():
             pass
@@ -246,14 +265,12 @@ class TableWidget(QtGui.QTableWidget):
         else:
             self.update_thread.start()
 
-        self.update_thread.set_data(df)
+        self.update_thread.set_data(df, self.progressbar)
         self.update_thread.exit()
 
-        # for i in range(len(df.index)):
-        #     for j in range(len(df.columns)):
-        #         self.setItem(i, j, QtGui.QTableWidgetItem(str(df.iat[i, j])))
-
     def update_data(self, df):
+
+        self.df = df.copy()
 
         if self.update_thread.isRunning():
             pass
@@ -262,13 +279,6 @@ class TableWidget(QtGui.QTableWidget):
             self.update_thread.start()
 
         self.update_thread.update_data(df)
-
-        # self.clearContents()
-        #
-        # self.setHorizontalHeaderLabels(df.columns.tolist())
-        # self.setColumnCount(len(df.columns.tolist()))
-        # self.setRowCount(len(df.index))
-        # self.set_data(df)
 
         self.update_thread.exit()
 
@@ -296,9 +306,7 @@ class FilterDialog(QtGui.QDialog):
         self.lit_labels = QtGui.QLabel("Literals")
         self.col_label = QtGui.QLabel("Columns")
         self.con_label = QtGui.QLabel("Conditionals")
-        # self.open_label = QtGui.QLabel("Open Parentheses")
-        # self.close_label = QtGui.QLabel("Close Parentheses")
-        self.text_label = QtGui.QLabel("Pandas Code")
+        self.text_label = QtGui.QLabel("Syntax")
         self.code_prompt = QtGui.QLabel("self.df.")
 
         self.refresh_data = QtGui.QPushButton("Refresh Data")
@@ -343,36 +351,40 @@ class FilterDialog(QtGui.QDialog):
 
                     literal_text = self.widgets_dict[x]["Literals"].text()
 
-            if self.widgets_dict[x]["Conditionals"].currentText() == "isnull":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isnull()].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "isnotnull":
-                indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isnull()].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == ">":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] > literal_text].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "<":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] < literal_text].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == ">=":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] >= literal_text].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "<=":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] <= literal_text].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "=":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] == literal_text].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "!=":
-                indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] != literal_text].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "isin":
-                if self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == float64:
-                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([float(l.strip()) for l in literal_text.split(",")])].index.values))
-                elif self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == int:
-                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([int(l.strip()) for l in literal_text.split(",")])].index.values))
-                else:
-                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([l.strip() for l in literal_text.split(",")])].index.values))
-            elif self.widgets_dict[x]["Conditionals"].currentText() == "isnotin":
-                if self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == float64:
-                    indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([float(l.strip()) for l in literal_text.split(",")])].index.values))
-                elif self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == int:
-                    indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([int(l.strip()) for l in literal_text.split(",")])].index.values))
-                else:
-                    indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([l.strip() for l in literal_text.split(",")])].index.values))
+            try:
+
+                if self.widgets_dict[x]["Conditionals"].currentText() == "isnull":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isnull()].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "isnotnull":
+                    indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isnull()].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == ">":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] > literal_text].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "<":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] < literal_text].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == ">=":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] >= literal_text].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "<=":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] <= literal_text].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "=":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] == literal_text].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "!=":
+                    indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()] != literal_text].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "isin":
+                    if self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == float64:
+                        indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([float(l.strip()) for l in literal_text.split(",")])].index.values))
+                    elif self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == int:
+                        indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([int(l.strip()) for l in literal_text.split(",")])].index.values))
+                    else:
+                        indexes.append(set(self.df.loc[self.df[self.widgets_dict[x]["Columns"].currentText()].isin([l.strip() for l in literal_text.split(",")])].index.values))
+                elif self.widgets_dict[x]["Conditionals"].currentText() == "isnotin":
+                    if self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == float64:
+                        indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([float(l.strip()) for l in literal_text.split(",")])].index.values))
+                    elif self.df[self.widgets_dict[x]["Columns"].currentText()].dtype == int:
+                        indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([int(l.strip()) for l in literal_text.split(",")])].index.values))
+                    else:
+                        indexes.append(set(self.df.loc[~self.df[self.widgets_dict[x]["Columns"].currentText()].isin([l.strip() for l in literal_text.split(",")])].index.values))
+            except TypeError:
+                ErrorDialog("TypeError: invalid type comparison")
 
         for i in indexes:
 
@@ -450,6 +462,8 @@ class FilterDialog(QtGui.QDialog):
         right_paren = pp.Word(")")
         gte = pp.Word(">=", exact=2)  # <===!=", exact=2)
         lte = pp.Word("<=", exact=2)
+        gt = pp.Word(">", exact=1)
+        lt = pp.Word("<", exact=1)
         quote = pp.Word("\"", exact=1)
         equal_cond = pp.Word("==", exact=2)
         nequal_cond = pp.Word("!=", exact=2)
@@ -460,10 +474,19 @@ class FilterDialog(QtGui.QDialog):
             columns_df.append(pp.Word(x, exact=len(x)))
 
         parse_eval = loc_match + pp.OneOrMore(pp.ZeroOrMore("(") + pp.Optional("~") + "self.df" + pp.Or([".", "[\"", "['"]) + pp.Or(columns_df) + pp.Optional(pp.Or(["\"]", "']"])) + \
-                     pp.Or([gte, lte, equal_cond, nequal_cond, pp.Word(".isin([", exact=7), pp.Word(".isnull(", exact=8)]) + pp.Optional(pp.Or(["\"", "'"])) + pp.Or(python_str_floats) + pp.Optional(pp.Or("\"]", "']")) + pp.ZeroOrMore(")") + pp.Optional(pp.Or(["|", "&"]))) + "]"
+                     pp.Or([gte, lte, equal_cond, nequal_cond, gt, lt, pp.Word(".isin([", exact=7), pp.Word(".isnull(", exact=8)]) + pp.Optional(pp.Or(["\"", "'"])) + pp.Or(python_str_floats) + pp.Optional(pp.Or("\"]", "']")) + pp.ZeroOrMore(")") + pp.Optional(pp.Or(["|", "&"]))) + "]"
+        try:
+            parse_eval.parseString(self.advanced_filter.text())
+            try:
+                exec("self.df = " + "self.df." + self.advanced_filter.text())
+            except SyntaxError:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                ErrorDialog(str(exc_value))
 
-        parse_eval.parseString(self.advanced_filter.text())
-        exec("self.df = " + "self.df." + self.advanced_filter.text())
+        except pp.ParseException:
+
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            ErrorDialog(str(exc_value))
 
         self.parent.update_data(self.df)
         self.exit_action()
@@ -596,6 +619,7 @@ class FilterDialog(QtGui.QDialog):
     def exit_action(self):
         self.close()
 
+
 class InputDialog(QtGui.QDialog):
 
     def __init__(self, box_type, df):
@@ -613,7 +637,8 @@ class InputDialog(QtGui.QDialog):
         self.rows_label1 = QtGui.QLabel("Start Value")
         self.rows_label2 = QtGui.QLabel("End Value")
         self.ok_button = QtGui.QPushButton("OK")
-
+        self.quit_action = QtGui.QAction(QtGui.QIcon(""), "Quit", self)
+        self.export_action = QtGui.QAction(QtGui.QIcon(""), "Export", self)
         self.ok_action = QtGui.QAction(QtGui.QIcon(""), "OK", self)
 
         self.set_triggers()
@@ -648,8 +673,12 @@ class InputDialog(QtGui.QDialog):
     def set_triggers(self):
 
         self.ok_button.clicked.connect(self.perform_actions)
+        self.quit_action.triggered.connect(self.exit_action)
+        self.export_action.triggered.connect(self.export)
 
     def perform_actions(self):
+
+        menu = QtGui.QMenuBar()
 
         if self.box_type == "Head":
             self.resize(500, 500)
@@ -658,8 +687,12 @@ class InputDialog(QtGui.QDialog):
             self.label.deleteLater()
             self.ok_button.deleteLater()
 
-            vd = TableWidget(self.df.head(int(self.filter_input.text())), self)
-            self.grid.addWidget(vd, 0, 0)
+            self.vd = LimitedTableWidget(self.df.head(int(self.filter_input.text())))
+            file_menu = menu.addMenu("&File")
+            file_menu.addAction(self.export_action)
+            file_menu.addAction(self.quit_action)
+            self.grid.addWidget(menu, 0, 0)
+            self.grid.addWidget(self.vd, 1, 0)
 
         elif self.box_type == "Tail":
 
@@ -669,8 +702,13 @@ class InputDialog(QtGui.QDialog):
             self.label.deleteLater()
             self.ok_button.deleteLater()
 
-            vd = TableWidget(self.df.tail(int(self.filter_input.text())), self)
-            self.grid.addWidget(vd, 0, 0)
+            self.vd = LimitedTableWidget(self.df.tail(int(self.filter_input.text())))
+
+            file_menu = menu.addMenu("&File")
+            file_menu.addAction(self.export_action)
+            file_menu.addAction(self.quit_action)
+            self.grid.addWidget(menu, 0, 0)
+            self.grid.addWidget(self.vd, 1, 0)
 
         elif self.box_type == "Show Columns":
 
@@ -681,8 +719,14 @@ class InputDialog(QtGui.QDialog):
             try:
                 self.resize(500, 500)
                 new_df = self.df[[c.strip() for c in self.filter_input.text().split(",")]]
-                vd = TableWidget(new_df, self)
-                self.grid.addWidget(vd, 0, 0)
+                self.vd = LimitedTableWidget(new_df)
+                self.grid.addWidget(self.vd, 0, 0)
+
+                file_menu = menu.addMenu("&File")
+                file_menu.addAction(self.export_action)
+                file_menu.addAction(self.quit_action)
+                self.grid.addWidget(menu, 0, 0)
+                self.grid.addWidget(self.vd, 1, 0)
             except KeyError:
 
                 ErrorDialog("One or more column names provided not recognized.  Please enter column names separated by commas.")
@@ -703,20 +747,40 @@ class InputDialog(QtGui.QDialog):
             if text1 and text2:
 
                 new_df = self.df[int(text1):int(text2)]
-                vd = TableWidget(new_df, self)
-                self.grid.addWidget(vd, 0, 0)
+                self.vd = LimitedTableWidget(new_df)
+                self.grid.addWidget(self.vd, 0, 0)
 
             elif text1 and not text2:
 
                 new_df = self.df.iloc[[int(text1)]]
-                vd = TableWidget(new_df, self)
-                self.grid.addWidget(vd, 0, 0)
+                self.vd = LimitedTableWidget(new_df)
+                self.grid.addWidget(self.vd, 0, 0)
 
             elif not text1 and text2:
 
                 new_df = self.df[:int(text2)]
-                vd = TableWidget(new_df, self)
-                self.grid.addWidget(vd, 0, 0)
+                self.vd = LimitedTableWidget(new_df)
+                self.grid.addWidget(self.vd, 0, 0)
+
+            file_menu = menu.addMenu("&File")
+            file_menu.addAction(self.export_action)
+            file_menu.addAction(self.quit_action)
+            self.grid.addWidget(menu, 0, 0)
+            self.grid.addWidget(self.vd, 1, 0)
+
+    def exit_action(self):
+        self.close()
+
+    def export(self):
+
+        filename = QtGui.QFileDialog.getSaveFileName(self, "Save file", "", self.tr('*.txt;;*.csv;;*.xlsx'))
+        if re.search(r'.*\.txt', filename):
+            self.vd.df.to_csv(filename, sep="\t")
+        elif re.search(r'.*\.csv', filename):
+            self.vd.df.to_csv(filename, sep=",")
+        elif re.search(r'.*\.xlsx', filename):
+            wb = pandas.ExcelWriter(filename)
+            self.vd.df.to_excel(wb, "Sheet1")
 
 
 class ErrorDialog(QtGui.QDialog):
@@ -745,7 +809,32 @@ class ErrorDialog(QtGui.QDialog):
         self.ok_button.setMaximumWidth(100)
 
         self.grid.addWidget(self.err_msg, 0, 0)
-        self.grid.addWidget(self.ok_button)
+        self.grid.addWidget(self.ok_button, 1, 0)
+
+
+class LimitedTableWidget(QtGui.QTableWidget):
+
+    def __init__(self, df):
+
+        super(LimitedTableWidget, self).__init__()
+
+        self.df = df
+
+        self.setColumnCount(len(self.df.columns))
+        self.setRowCount(len(self.df.index))
+
+        self.init_ui()
+
+    def init_ui(self):
+
+        self.setHorizontalHeaderLabels(self.df.columns.tolist())
+        self.set_data(self.df)
+
+    def set_data(self, df):
+
+        for i in range(len(df.index)):
+            for j in range(len(df.columns)):
+                self.setItem(i, j, QtGui.QTableWidgetItem(str(df.iat[i, j])))
 
 
 class WorkerThread(QtCore.QThread):
@@ -758,11 +847,18 @@ class WorkerThread(QtCore.QThread):
         self.table = table
 
 
-    def set_data(self, df):
+    def set_data(self, df, progressbar=None):
 
+        dimensions = len(df.index)*len(df.columns)
+
+        count = 0
         for i in range(len(df.index)):
             for j in range(len(df.columns)):
                 self.table.setItem(i, j, QtGui.QTableWidgetItem(str(df.iat[i, j])))
+
+                count += 1
+
+                self.tick.emit((count/dimensions)*100)
 
     def update_data(self, df):
 
