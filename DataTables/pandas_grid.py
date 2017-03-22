@@ -14,7 +14,20 @@ class DataTable(QtGui.QMainWindow):
 
         super(DataTable, self).__init__()
         self.setWindowTitle(window_title)
-        self.datatable = TableWidget(df, self, width, height, editable)
+        if isinstance(df, (list, tuple)):
+            if len(df[0].columns) * len(df[0].index) >= 100000:
+                self.datatable = TableWidgetSub(df, self, width, height, editable)
+                self.sub_flag = True
+            else:
+                self.datatable = TableWidget(df, self, width, height, editable)
+                self.sub_flag = False
+        else:
+            if len(df.columns) * len(df.index) >= 100000:
+                self.datatable = TableWidgetSub(df, self, width, height, editable)
+                self.sub_flag = True
+            else:
+                self.datatable = TableWidget(df, self, width, height, editable)
+                self.sub_flag = False
         self.main_layout = QtGui.QVBoxLayout()
 
         self.next_action = QtGui.QAction(QtGui.QIcon(""), 'Next', self)
@@ -127,24 +140,45 @@ class DataTable(QtGui.QMainWindow):
 
         sender = self.sender()
 
-        if sender.text() == "Export":
+        if self.sub_flag:
+            if sender.text() == "Export":
 
-            filename = QtGui.QFileDialog.getSaveFileName(self, "Save file", "", self.tr('*.txt;;*.csv;;*.xlsx'))
-            if re.search(r'.*\.txt', filename):
-                self.datatable.df.to_csv(filename, sep="\t")
-            elif re.search(r'.*\.csv', filename):
-                self.datatable.df.to_csv(filename, sep=",")
-            elif re.search(r'.*\.xlsx', filename):
-                wb = pandas.ExcelWriter(filename)
-                self.datatable.df.to_excel(wb, "Sheet1")
+                filename = QtGui.QFileDialog.getSaveFileName(self, "Save file", "", self.tr('*.txt;;*.csv;;*.xlsx'))
+                if re.search(r'.*\.txt', filename):
+                    self.datatable.all_df.to_csv(filename, sep="\t")
+                elif re.search(r'.*\.csv', filename):
+                    self.datatable.all_df.to_csv(filename, sep=",")
+                elif re.search(r'.*\.xlsx', filename):
+                    wb = pandas.ExcelWriter(filename)
+                    self.datatable.all_df.to_excel(wb, "Sheet1")
+
+            else:
+
+                i_dialog = InputDialog(sender.text(), self.datatable.all_df)
 
         else:
 
-            i_dialog = InputDialog(sender.text(), self.datatable.df)
+            if sender.text() == "Export":
+
+                filename = QtGui.QFileDialog.getSaveFileName(self, "Save file", "", self.tr('*.txt;;*.csv;;*.xlsx'))
+                if re.search(r'.*\.txt', filename):
+                    self.datatable.df.to_csv(filename, sep="\t")
+                elif re.search(r'.*\.csv', filename):
+                    self.datatable.df.to_csv(filename, sep=",")
+                elif re.search(r'.*\.xlsx', filename):
+                    wb = pandas.ExcelWriter(filename)
+                    self.datatable.df.to_excel(wb, "Sheet1")
+
+            else:
+
+                i_dialog = InputDialog(sender.text(), self.datatable.df)
 
     def open_filter_dialog(self):
 
-        fd = FilterDialog(self.datatable.df, self.datatable)
+        if self.sub_flag:
+            fd = FilterDialog(self.datatable.all_df, self.datatable)
+        else:
+            fd = FilterDialog(self.datatable.df, self.datatable)
 
     def revert_df(self):
 
@@ -271,6 +305,54 @@ class TableWidget(QtGui.QTableWidget):
         # self.set_data(df)
 
         self.update_thread.exit()
+
+
+class TableWidgetSub(TableWidget):
+
+    def __init__(self, df, parent, width=1000, height=500, editable=False, window_title="DataFrame Viewer"):
+
+        super(TableWidget, self).__init__()
+
+        # self.window_title = window_title
+
+        if not editable:
+            self.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+
+        if isinstance(df, (tuple, list)):
+
+            self.table_iter = [i.ix[:,0:10].head(10) for i in df]
+            self.df = df[0].ix[:,0:10].head(10)
+            self.iter_index = 0
+
+            self.original_df_all = df[self.iter_index].copy()
+            self.all_df = df[self.iter_index].copy()
+
+        else:
+
+            self.table_iter = None
+            self.iter_index = None
+            self.df = df.ix[:,0:10].head(10)
+
+            self.original_df_all = df.copy()
+            self.all_df = df.copy()
+
+        self.original_df = self.df.copy()
+
+        self.setColumnCount(len(self.df.columns))
+        self.setRowCount(len(self.df.index))
+        self.update_thread = WorkerThread(self)
+
+        self.init_ui(width, height)
+
+    def update_data(self, df):
+
+        if self.update_thread.isRunning():
+            pass
+
+        else:
+            self.update_thread.start()
+
+        self.update_thread.update_data(df)
 
 
 class FilterDialog(QtGui.QDialog):
