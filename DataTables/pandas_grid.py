@@ -203,7 +203,8 @@ class TableWidget(QtGui.QTableWidget):
         try:
             self.setHorizontalHeaderLabels(self.df.columns.tolist())
         except TypeError:
-            self.setHorizontalHeaderLabels([str(i) for i in self.df.columns.tolist()])
+            self.df.columns = [str(i) for i in self.df.columns.tolist()]
+            self.setHorizontalHeaderLabels(self.df.columns.tolist())
         self.set_data(self.df)
 
         self.itemChanged.connect(self.edit_data)
@@ -593,7 +594,10 @@ class FilterDialog(QtGui.QDialog):
                                                  "Conditionals": QtGui.QComboBox(), "Literals": QtGui.QLineEdit(),
                                                  "CondCombo": QtGui.QComboBox()}})
 
-        self.widgets_dict[self.cur_row]["Columns"].addItems(self.df.columns.tolist())
+        try:
+            self.widgets_dict[self.cur_row]["Columns"].addItems(self.df.columns.tolist())
+        except TypeError:
+            self.widgets_dict[self.cur_row]["Columns"].addItems([str(i) for i in self.df.columns.tolist()])
         self.widgets_dict[self.cur_row]["Conditionals"].addItems(["", ">", "<", "=", ">=", "<=", "!=", "isnull",
                                                                         "isnotnull", "isin", "isnotin"])
         self.widgets_dict[self.cur_row]["CondCombo"].addItems(["", "and", "or"])
